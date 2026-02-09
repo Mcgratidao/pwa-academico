@@ -127,17 +127,23 @@
       <div class="modal-sheet">
         <div class="drag-handle"></div>
         <p class="modal-label">{{ dataFocada.id }}</p>
-        <h2>{{ zonaAtiva === 'academico' ? (materiaSelecionada?.nome || 'Selecione uma matéria') : (itemSaudeSelecionado?.nome || 'Selecione um item') }}</h2>
+        <h2>{{ zonaAtiva === 'academico' ? (materiaSelecionada?.nome || 'Seleção') : (itemSaudeSelecionado?.nome || 'Saúde') }}</h2>
 
-        <div class="modal-buttons" v-if="(zonaAtiva === 'academico' && materiaSelecionada) || (zonaAtiva === 'saude' && itemSaudeSelecionado)">
-          <template v-if="zonaAtiva === 'academico'">
-            <button @click="registrar('Presença')" class="m-btn btn-presenca">Presença ✅</button>
-            <div class="m-row">
-              <button @click="registrar('Falta')" class="m-btn btn-falta">Falta ❌</button>
-              <button @click="registrar('EAD')" class="m-btn btn-ead">EAD 💻</button>
+        <div class="modal-buttons">
+          <template v-if="zonaAtiva === 'academico' && materiaSelecionada">
+            <div v-if="dataFocada.date.getDay() === materiaSelecionada.diaSemana">
+              <button @click="registrar('Presença')" class="m-btn btn-presenca">Presença ✅</button>
+              <div class="m-row" style="display:flex; gap:10px">
+                <button @click="registrar('Falta')" class="m-btn btn-falta" style="flex:1">Falta ❌</button>
+                <button @click="registrar('EAD')" class="m-btn btn-ead" style="flex:1">EAD 💻</button>
+              </div>
+            </div>
+            <div v-else class="block-warning">
+              ⚠️ Esta aula ocorre apenas às <strong>{{ diasSemanaPt[materiaSelecionada.diaSemana] }}s</strong>.
             </div>
           </template>
-          <template v-else>
+
+          <template v-else-if="zonaAtiva === 'saude' && itemSaudeSelecionado">
             <button @click="registrarSaude('Tomado')" class="m-btn btn-presenca">Concluído ✅</button>
             <button @click="registrarSaude('Esquecido')" class="m-btn btn-falta">Pulei ❌</button>
           </template>
@@ -157,7 +163,7 @@ const zonaAtiva = ref('academico');
 const pastaAberta = ref(1);
 const idEditando = ref(null);
 const dataAtual = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'short' });
-const diasSemanaPt = ['Dom', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+const diasSemanaPt = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
 
 const materias = ref([]);
 const presencas = ref([]);
@@ -187,7 +193,7 @@ const buscarDados = async () => {
 };
 
 const salvarMateria = async () => {
-  if(!novaMateria.value.nome) return;
+  if(!novaMateria.value.nome || novaMateria.value.diaSemana === '') return;
   if(idEditando.value) {
     await updateDoc(doc(db, "materias", idEditando.value), novaMateria.value);
     idEditando.value = null;
@@ -209,14 +215,12 @@ const salvarSaude = async () => {
 };
 
 const registrar = async (tipo) => {
-  if(!materiaSelecionada.value) return;
   await addDoc(collection(db, "presencas"), { materiaId: materiaSelecionada.value.id, data: dataFocada.value.id, dataOriginal: dataFocada.value.date, tipo });
   dataFocada.value = null;
   buscarDados();
 };
 
 const registrarSaude = async (tipo) => {
-  if(!itemSaudeSelecionado.value) return;
   await addDoc(collection(db, "registrosSaude"), { itemId: itemSaudeSelecionado.value.id, data: dataFocada.value.id, dataOriginal: dataFocada.value.date, tipo });
   dataFocada.value = null;
   buscarDados();
@@ -233,7 +237,6 @@ const statusFalta = (m) => {
   return 'f-gray';
 };
 
-// CALENDÁRIO GERAL: Filtra registros de matérias que não existem mais
 const atributosGerais = computed(() => {
   return presencas.value
     .filter(p => materias.value.some(m => m.id === p.materiaId))
@@ -253,10 +256,14 @@ const atributosSaude = (id) => registrosSaude.value.filter(r => r.itemId === id)
   dates: r.dataOriginal.toDate ? r.dataOriginal.toDate() : new Date(r.dataOriginal)
 }));
 
-const abrirModal = (day) => dataFocada.value = day;
+// BLOQUEIO DO CALENDÁRIO GERAL
+const abrirModal = (day) => {
+  if (zonaAtiva.value === 'academico' && !materiaSelecionada.value) return; // Não abre no geral
+  dataFocada.value = day;
+};
 
 const excluirMateria = async (id) => {
-  if(confirm('Excluir matéria e todo o histórico?')) {
+  if(confirm('Excluir histórico?')) {
     await deleteDoc(doc(db, "materias", id));
     const orfas = presencas.value.filter(p => p.materiaId === id);
     for (const p of orfas) await deleteDoc(doc(db, "presencas", p.id));
@@ -266,7 +273,7 @@ const excluirMateria = async (id) => {
 };
 
 const excluirSaude = async (id) => {
-  if(confirm('Excluir item e histórico?')) {
+  if(confirm('Excluir histórico?')) {
     await deleteDoc(doc(db, "saude", id));
     const orfas = registrosSaude.value.filter(r => r.itemId === id);
     for (const r of orfas) await deleteDoc(doc(db, "registrosSaude", r.id));
@@ -317,6 +324,7 @@ onMounted(buscarDados);
 .btn-falta { background: #ef4444; }
 .btn-ead { background: #3b82f6; }
 .btn-close-modal { width: 100%; background: none; border: none; color: #94a3b8; font-weight: bold; margin-top: 10px; }
+.block-warning { background: #fff7ed; color: #c2410c; padding: 20px; border-radius: 15px; text-align: center; border: 1px dashed #fdba74; margin-bottom: 15px; }
 .fade-in { animation: fadeIn 0.3s ease; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 </style>
