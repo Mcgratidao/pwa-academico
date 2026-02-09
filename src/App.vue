@@ -76,6 +76,7 @@
           </div>
           <VDatePicker 
             expanded transparent borderless
+            :first-day-of-week="1"
             :attributes="materiaSelecionada ? atributosCalendario(materiaSelecionada.id) : atributosGerais"
             @dayclick="abrirModal"
             :color="materiaSelecionada ? 'yellow' : 'orange'"
@@ -111,7 +112,13 @@
             <h3>Histórico: {{ itemSaudeSelecionado.nome }}</h3>
             <button @click="itemSaudeSelecionado = null" class="btn-reset">X</button>
           </div>
-          <VDatePicker expanded transparent borderless :attributes="atributosSaude(itemSaudeSelecionado.id)" @dayclick="abrirModal" color="green" />
+          <VDatePicker 
+            expanded transparent borderless 
+            :first-day-of-week="1"
+            :attributes="atributosSaude(itemSaudeSelecionado.id)" 
+            @dayclick="abrirModal" 
+            color="green" 
+          />
         </section>
       </div>
     </main>
@@ -251,10 +258,9 @@ const abrirModal = (day) => dataFocada.value = day;
 const excluirMateria = async (id) => {
   if(confirm('Excluir matéria e todo o histórico?')) {
     await deleteDoc(doc(db, "materias", id));
-    // Limpeza de órfãos
     const orfas = presencas.value.filter(p => p.materiaId === id);
     for (const p of orfas) await deleteDoc(doc(db, "presencas", p.id));
-    materiaSelecionada.value = null;
+    if(materiaSelecionada.value?.id === id) materiaSelecionada.value = null;
     buscarDados();
   }
 };
@@ -264,7 +270,7 @@ const excluirSaude = async (id) => {
     await deleteDoc(doc(db, "saude", id));
     const orfas = registrosSaude.value.filter(r => r.itemId === id);
     for (const r of orfas) await deleteDoc(doc(db, "registrosSaude", r.id));
-    itemSaudeSelecionado.value = null;
+    if(itemSaudeSelecionado.value?.id === id) itemSaudeSelecionado.value = null;
     buscarDados();
   }
 };
@@ -273,7 +279,6 @@ onMounted(buscarDados);
 </script>
 
 <style scoped>
-/* Estilos mantidos conforme sua última versão que estava boa */
 .mobile-container { max-width: 480px; margin: 0 auto; min-height: 100vh; background: #f8fafc; color: #334155; font-family: sans-serif; }
 .main-content { padding: 15px; padding-bottom: 100px; }
 .header-yellow { background: #fbbf24; padding: 30px 20px; border-radius: 0 0 30px 30px; color: #451a03; }
@@ -288,7 +293,7 @@ onMounted(buscarDados);
 .btn-primary-yellow { width: 100%; height: 50px; background: #fbbf24; border: none; border-radius: 12px; font-weight: bold; color: #451a03; }
 .btn-primary-green { width: 100%; height: 50px; background: #10b981; border: none; border-radius: 12px; font-weight: bold; color: white; }
 .btn-update { width: 100%; height: 50px; background: #334155; border: none; border-radius: 12px; font-weight: bold; color: white; }
-.materia-item { background: white; border-radius: 15px; padding: 12px 16px; margin-top: 8px; border: 1px solid #f1f5f9; }
+.materia-item { background: white; border-radius: 15px; padding: 12px 16px; margin-top: 8px; border: 1px solid #f1f5f9; cursor: pointer;}
 .materia-selected { border: 2px solid #fbbf24; background: #fffdf5; }
 .health-selected { border: 2px solid #10b981; background: #f0fdf4; }
 .materia-row { display: flex; justify-content: space-between; align-items: center; }
