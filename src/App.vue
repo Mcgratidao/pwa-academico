@@ -30,10 +30,6 @@
                 <option v-for="(n, i) in diasSemanaPt" :key="i" :value="i">{{ n }}</option>
               </select>
             </div>
-            <select v-model.number="novaMateria.limiteFaltas" class="input-modern">
-              <option :value="2">Matéria Curta (Limite: 2)</option>
-              <option :value="5">Matéria Longa (Limite: 5)</option>
-            </select>
             <button @click="salvarMateria" :class="idEditando ? 'btn-update' : 'btn-primary-yellow'">
               {{ idEditando ? 'Salvar Alterações' : 'Adicionar Matéria' }}
             </button>
@@ -59,19 +55,12 @@
               <div class="m-card-row-bottom">
                 <div class="falta-display">
                   <span class="falta-label">Faltas:</span>
-                  <span class="falta-val" :class="statusFalta(m)">{{ contarFaltas(m.id) }} / {{ m.limiteFaltas || 5 }}</span>
+                  <span class="falta-val" :class="statusFalta(m)">{{ contarFaltas(m.id) }}</span>
                 </div>
-                
                 <div class="materia-controls-horizontal">
                   <button @click.stop="prepararEdicao(m)" class="tool-btn edit">✏️</button>
                   <button @click.stop="excluirMateria(m.id)" class="tool-btn delete">🗑️</button>
                 </div>
-              </div>
-
-              <div class="mini-progress-bg">
-                <div class="mini-progress-fill" 
-                     :style="{ width: (contarFaltas(m.id) / (m.limiteFaltas || 5) * 100) + '%' }"
-                     :class="statusFalta(m)"></div>
               </div>
             </div>
           </div>
@@ -91,52 +80,35 @@
           />
         </section>
       </div>
-
-      <div v-if="zonaAtiva === 'saude'">
-        <section class="card border-green-soft shadow-premium">
-          <h3 class="section-title">Novo Hábito</h3>
-          <input v-model="novoSaude.nome" placeholder="Nome" class="input-modern" />
-          <div class="row-flex">
-            <input v-model="novoSaude.horario" type="time" class="input-modern flex-1" />
-            <button @click="salvarSaude" class="btn-primary-green flex-1">Salvar</button>
-          </div>
-        </section>
-
-        <div v-for="s in listaSaude" :key="s.id"
-             class="materia-card-new health-card"
-             @click="itemSaudeSelecionado = s">
-             <div class="m-card-row-top">
-                <strong>{{ s.nome }}</strong>
-                <span class="time-chip">{{ s.horario }}</span>
-             </div>
-             <div class="m-card-row-bottom" style="justify-content: flex-end;">
-                <button @click.stop="excluirSaude(s.id)" class="tool-btn delete">🗑️</button>
-             </div>
-        </div>
-      </div>
     </main>
 
     <div v-if="dataFocada" class="modal-overlay" @click.self="dataFocada = null">
       <div class="modal-sheet animate-up">
         <div class="drag-handle"></div>
         <p class="modal-label">{{ dataFocada.id }}</p>
-        <h2>{{ zonaAtiva === 'academico' ? (materiaSelecionada?.nome) : (itemSaudeSelecionado?.nome) }}</h2>
+        <h2>{{ materiaSelecionada?.nome }}</h2>
 
         <div class="modal-buttons">
-          <template v-if="zonaAtiva === 'academico' && materiaSelecionada">
-            <div v-if="dataFocada.date.getDay() === materiaSelecionada.diaSemana">
-              <button @click="registrar('Presença')" class="m-btn btn-presenca">Presença ✅</button>
-              <div class="m-row-flex">
-                <button @click="registrar('Falta')" class="m-btn btn-falta">Falta ❌</button>
-                <button @click="registrar('EAD')" class="m-btn btn-ead">EAD 💻</button>
-              </div>
+          <template v-if="dataFocada.date.getDay() === materiaSelecionada.diaSemana">
+            <button @click="registrar('Presença')" class="m-btn btn-presenca">Presença ✅</button>
+            <div class="m-row-flex">
+              <button @click="registrar('Falta')" class="m-btn btn-falta">Falta ❌</button>
+              <button @click="registrar('EAD')" class="m-btn btn-ead">EAD 💻</button>
             </div>
-            <div v-else class="block-warning">
-              ⚠️ Aula apenas às <strong>{{ diasSemanaPt[materiaSelecionada.diaSemana] }}s</strong>.
+          </template>
+
+          <template v-else>
+            <div class="block-warning">
+              <p>O registro só é permitido às <strong>{{ diasSemanaPt[materiaSelecionada.diaSemana] }}s</strong>.</p>
+            </div>
+            <button class="m-btn btn-disabled" disabled>Presença Bloqueada</button>
+            <div class="m-row-flex">
+              <button class="m-btn btn-disabled flex-1" disabled>Falta</button>
+              <button class="m-btn btn-disabled flex-1" disabled>EAD</button>
             </div>
           </template>
         </div>
-        <button @click="dataFocada = null" class="btn-close-modal">Fechar</button>
+        <button @click="dataFocada = null" class="btn-close-modal">Voltar</button>
       </div>
     </div>
   </div>
@@ -147,7 +119,6 @@ import { ref, onMounted, computed } from 'vue';
 import { db } from './firebase';
 import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc } from "firebase/firestore";
 
-// ESTADOS E VARIÁVEIS (Mantidos da sua versão funcional)
 const zonaAtiva = ref('academico');
 const pastaAberta = ref(1);
 const idEditando = ref(null);
@@ -156,30 +127,25 @@ const diasSemanaPt = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta
 
 const materias = ref([]);
 const presencas = ref([]);
-const listaSaude = ref([]);
-const registrosSaude = ref([]);
 const materiaSelecionada = ref(null);
-const itemSaudeSelecionado = ref(null);
 const dataFocada = ref(null);
+const novaMateria = ref({ nome: '', diaSemana: '', semestre: 1 });
 
-const novaMateria = ref({ nome: '', diaSemana: '', semestre: 1, limiteFaltas: 5 });
-const novoSaude = ref({ nome: '', horario: '', frequencia: 'diario' });
-
-// FUNÇÕES DE LÓGICA (Mantidas e protegidas)
 const mudarZona = (z) => { zonaAtiva.value = z; materiaSelecionada.value = null; };
 const togglePasta = (s) => pastaAberta.value = pastaAberta.value === s ? null : s;
 
 const buscarDados = async () => {
-  const [m, p, s, rs] = await Promise.all([
+  const [m, p] = await Promise.all([
     getDocs(collection(db, "materias")),
-    getDocs(collection(db, "presencas")),
-    getDocs(collection(db, "saude")),
-    getDocs(collection(db, "registrosSaude"))
+    getDocs(collection(db, "presencas"))
   ]);
   materias.value = m.docs.map(d => ({id: d.id, ...d.data()}));
-  presencas.value = p.docs.map(d => ({id: d.id, ...d.data()}));
-  listaSaude.value = s.docs.map(d => ({id: d.id, ...d.data()}));
-  registrosSaude.value = rs.docs.map(d => ({id: d.id, ...d.data()}));
+  presencas.value = p.docs.map(d => ({
+    id: d.id, 
+    ...d.data(),
+    // Garante que a data do Firebase seja convertida corretamente para Date JS
+    dataOriginal: d.data().dataOriginal?.toDate ? d.data().dataOriginal.toDate() : new Date(d.data().dataOriginal)
+  }));
 };
 
 const salvarMateria = async () => {
@@ -190,23 +156,18 @@ const salvarMateria = async () => {
   } else {
     await addDoc(collection(db, "materias"), novaMateria.value);
   }
-  novaMateria.value = { nome: '', diaSemana: '', semestre: 1, limiteFaltas: 5 };
-  buscarDados();
-};
-
-const prepararEdicao = (m) => { idEditando.value = m.id; novaMateria.value = { ...m }; };
-const cancelarEdicao = () => { idEditando.value = null; novaMateria.value = { nome: '', diaSemana: '', semestre: 1, limiteFaltas: 5 }; };
-
-const salvarSaude = async () => {
-  if(!novoSaude.value.nome) return;
-  await addDoc(collection(db, "saude"), novoSaude.value);
-  novoSaude.value = { nome: '', horario: '', frequencia: 'diario' };
+  novaMateria.value = { nome: '', diaSemana: '', semestre: 1 };
   buscarDados();
 };
 
 const registrar = async (tipo) => {
   if(!materiaSelecionada.value) return;
-  await addDoc(collection(db, "presencas"), { materiaId: materiaSelecionada.value.id, data: dataFocada.value.id, dataOriginal: dataFocada.value.date, tipo });
+  await addDoc(collection(db, "presencas"), { 
+    materiaId: materiaSelecionada.value.id, 
+    data: dataFocada.value.id, 
+    dataOriginal: dataFocada.value.date, 
+    tipo 
+  });
   dataFocada.value = null;
   buscarDados();
 };
@@ -216,20 +177,17 @@ const contarFaltas = (id) => presencas.value.filter(p => p.materiaId === id && p
 
 const statusFalta = (m) => {
   const f = contarFaltas(m.id);
-  const lim = m.limiteFaltas || 5;
-  if (f >= lim) return 'f-red';
-  if (f >= lim - 1) return 'f-orange';
-  return 'f-accent';
+  return f >= 4 ? 'f-red' : (f >= 2 ? 'f-orange' : 'f-accent');
 };
 
 const atributosGerais = computed(() => presencas.value.map(p => ({
   highlight: { color: p.tipo === 'Presença' ? 'green' : (p.tipo === 'EAD' ? 'blue' : 'red'), fillMode: 'light' },
-  dates: p.dataOriginal.toDate ? p.dataOriginal.toDate() : new Date(p.dataOriginal)
+  dates: p.dataOriginal
 })));
 
 const atributosCalendario = (id) => presencas.value.filter(p => p.materiaId === id).map(p => ({
   highlight: { color: p.tipo === 'Presença' ? 'green' : (p.tipo === 'EAD' ? 'blue' : 'red'), fillMode: 'solid' },
-  dates: p.dataOriginal.toDate ? p.dataOriginal.toDate() : new Date(p.dataOriginal)
+  dates: p.dataOriginal
 }));
 
 const abrirModal = (day) => {
@@ -244,73 +202,67 @@ const excluirMateria = async (id) => {
   }
 };
 
+const prepararEdicao = (m) => { idEditando.value = m.id; novaMateria.value = { ...m }; };
+const cancelarEdicao = () => { idEditando.value = null; novaMateria.value = { nome: '', diaSemana: '', semestre: 1 }; };
+
 onMounted(buscarDados);
 </script>
 
 <style scoped>
-/* BASE */
-.mobile-container { max-width: 480px; margin: 0 auto; min-height: 100vh; background: #f1f5f9; color: #1e293b; font-family: 'Inter', sans-serif; }
-.main-content { padding: 16px; padding-bottom: 80px; }
+/* CORES DO TEMA ATUALIZADAS */
+:root {
+  --amarelo-ouro: #FFB300;
+  --amarelo-hover: #FFA000;
+  --verde-saude: #065f46;
+}
 
-/* HEADERS PREMIUM */
-.header-yellow { background: #b45309; padding: 40px 20px 30px; border-radius: 0 0 35px 35px; color: white; }
-.header-green { background: #065f46; padding: 40px 20px 30px; border-radius: 0 0 35px 35px; color: white; }
-.day-label { font-size: 0.8rem; font-weight: 700; opacity: 0.8; text-transform: uppercase; letter-spacing: 1px; }
-h1 { font-size: 1.8rem; font-weight: 800; margin-top: 5px; }
+.mobile-container { max-width: 480px; margin: 0 auto; min-height: 100vh; background: #f8fafc; color: #1e293b; font-family: 'Inter', sans-serif; }
 
-.tabs-modern { display: flex; background: rgba(0,0,0,0.15); padding: 5px; border-radius: 16px; margin-top: 20px; }
-.tabs-modern button { flex: 1; border: none; padding: 12px; border-radius: 12px; font-weight: 700; background: transparent; color: white; transition: 0.3s; }
+/* HEADER - AGORA AMARELO OURO */
+.header-yellow { background: var(--amarelo-ouro); padding: 40px 20px 30px; border-radius: 0 0 35px 35px; color: #fff; box-shadow: 0 10px 20px rgba(255, 179, 0, 0.2); }
+.header-green { background: var(--verde-saude); padding: 40px 20px 30px; border-radius: 0 0 35px 35px; color: white; }
+
 .tabs-modern button.active { background: white; color: #1e293b; }
 
-/* CARDS */
-.card { background: white; border-radius: 24px; padding: 24px; margin-bottom: 20px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05); }
-.border-top-accent { border-top: 4px solid #b45309; }
+/* CARDS E BOTÕES */
+.border-top-accent { border-top: 4px solid var(--amarelo-ouro); }
+.btn-primary-yellow { width: 100%; height: 54px; background: var(--amarelo-ouro); border: none; border-radius: 14px; font-weight: 800; color: white; cursor: pointer; transition: 0.3s; }
+.btn-primary-yellow:hover { background: var(--amarelo-hover); }
 
-/* NOVO DESIGN DO CARD DE MATÉRIA */
-.materia-card-new { 
-  background: white; border-radius: 20px; padding: 16px; margin-top: 12px;
-  box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); border: 1px solid #e2e8f0;
-  position: relative; overflow: hidden; transition: 0.2s;
+.materia-selected { border: 2px solid var(--amarelo-ouro); transform: translateY(-2px); }
+
+/* ESTILO DOS BOTÕES DESABILITADOS (CINZA) */
+.btn-disabled {
+  background: #e2e8f0 !important;
+  color: #94a3b8 !important;
+  cursor: not-allowed !important;
+  border: 1px solid #cbd5e1 !important;
 }
-.materia-selected { border: 2px solid #b45309; transform: translateY(-2px); }
 
-.m-card-row-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-.m-card-row-top strong { font-size: 1.1rem; color: #0f172a; }
-.materia-day-chip { font-size: 0.7rem; font-weight: 800; background: #f8fafc; color: #64748b; padding: 4px 10px; border-radius: 8px; border: 1px solid #e2e8f0; }
-
-.m-card-row-bottom { display: flex; justify-content: space-between; align-items: center; }
-.falta-display { display: flex; align-items: center; gap: 6px; }
-.falta-label { font-size: 0.8rem; color: #64748b; font-weight: 600; }
-.falta-val { font-size: 0.9rem; font-weight: 800; padding: 2px 8px; border-radius: 6px; }
-
-.materia-controls-horizontal { display: flex; gap: 10px; }
-.tool-btn { width: 38px; height: 38px; border-radius: 10px; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s; }
-.tool-btn.edit { background: #eff6ff; color: #2563eb; }
-.tool-btn.delete { background: #fef2f2; color: #dc2626; }
-
-/* BARRA DE PROGRESSO NO CARD */
-.mini-progress-bg { position: absolute; bottom: 0; left: 0; width: 100%; height: 4px; background: #f1f5f9; }
-.mini-progress-fill { height: 100%; transition: 0.5s ease-out; }
-
-/* STATUS CORES */
-.f-accent { color: #b45309; background: #fffbeb; } /* Cor do tema */
-.f-orange { color: #d97706; background: #fff7ed; }
-.f-red { color: #dc2626; background: #fef2f2; }
-.bg-f-accent { background: #b45309; }
-
-/* INPUTS */
-.input-modern { width: 100%; height: 50px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 0 16px; margin-bottom: 12px; box-sizing: border-box; font-size: 1rem; }
-.btn-primary-yellow { width: 100%; height: 54px; background: #b45309; border: none; border-radius: 14px; font-weight: 800; color: white; cursor: pointer; }
+.block-warning {
+  background: #fff1f2;
+  color: #e11d48;
+  padding: 12px;
+  border-radius: 12px;
+  margin-bottom: 15px;
+  font-size: 0.9rem;
+  text-align: center;
+  border: 1px solid #fecdd3;
+}
 
 /* MODAL */
-.modal-sheet { background: white; width: 100%; border-radius: 30px 30px 0 0; padding: 30px; box-sizing: border-box; }
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: flex-end; z-index: 999; }
+.modal-sheet { background: white; width: 100%; border-radius: 30px 30px 0 0; padding: 30px; }
 .m-btn { width: 100%; height: 58px; border-radius: 18px; border: none; font-weight: 800; color: white; margin-bottom: 12px; cursor: pointer; }
-.btn-presenca { background: #065f46; }
+.btn-presenca { background: #059669; }
 .btn-falta { background: #dc2626; }
 .btn-ead { background: #2563eb; }
-.m-row-flex { display: flex; gap: 10px; }
+.btn-close-modal { width: 100%; padding: 15px; background: none; border: none; color: #64748b; font-weight: 600; cursor: pointer; }
 
-.animate-up { animation: slideUp 0.3s ease-out; }
-@keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+/* REGRAS GERAIS */
+.card { background: white; border-radius: 24px; padding: 20px; margin-bottom: 16px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+.row-flex { display: flex; gap: 10px; margin-bottom: 10px; }
+.flex-1 { flex: 1; }
+.input-modern { width: 100%; height: 48px; background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 12px; padding: 0 12px; box-sizing: border-box; }
 </style>
 
