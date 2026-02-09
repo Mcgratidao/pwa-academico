@@ -45,15 +45,22 @@
             <span class="folder-text">📂 {{ sem }}º Semestre</span>
             <span class="count-badge">{{ filtrarPorSemestre(sem).length }}</span>
           </div>
+
           <div v-if="pastaAberta === sem" class="folder-list">
-            <div v-for="m in filtrarPorSemestre(sem)" :key="m.id" @click="materiaSelecionada = m" :class="['materia-item', { 'materia-selected': materiaSelecionada?.id === m.id }]">
+            <div v-for="m in filtrarPorSemestre(sem)" :key="m.id" 
+                 @click="materiaSelecionada = m"
+                 :class="['materia-item', { 'materia-selected': materiaSelecionada?.id === m.id }]">
+
               <div class="materia-row">
                 <div class="materia-info">
                   <span class="materia-day-chip">{{ diasSemanaPt[m.diaSemana].substring(0,3) }}</span>
                   <strong>{{ m.nome }}</strong>
                 </div>
+
                 <div class="materia-controls">
-                  <div class="compact-falta" :class="statusFalta(m)">{{ contarFaltas(m.id) }}/{{ m.limiteFaltas || 5 }}</div>
+                  <div class="compact-falta" :class="statusFalta(m)">
+                    {{ contarFaltas(m.id) }}/{{ m.limiteFaltas || 5 }}
+                  </div>
                   <button @click.stop="prepararEdicao(m)" class="mini-btn edit">✏️</button>
                   <button @click.stop="excluirMateria(m.id)" class="mini-btn delete">🗑️</button>
                 </div>
@@ -67,11 +74,9 @@
             <h3>{{ materiaSelecionada ? materiaSelecionada.nome : 'Calendário Geral' }}</h3>
             <button v-if="materiaSelecionada" @click="materiaSelecionada = null" class="btn-reset">Ver Geral</button>
           </div>
-          
           <VDatePicker 
             expanded transparent borderless
             :first-day-of-week="1"
-            :disabled-dates="diasDesativados"
             :attributes="materiaSelecionada ? atributosCalendario(materiaSelecionada.id) : atributosGerais"
             @dayclick="abrirModal"
             :color="materiaSelecionada ? 'yellow' : 'orange'"
@@ -89,16 +94,31 @@
           </div>
         </section>
 
-        <div v-for="s in listaSaude" :key="s.id" class="materia-item" :class="{ 'health-selected': itemSaudeSelecionado?.id === s.id }" @click="itemSaudeSelecionado = s">
+        <div v-for="s in listaSaude" :key="s.id" 
+             class="materia-item" 
+             :class="{ 'health-selected': itemSaudeSelecionado?.id === s.id }"
+             @click="itemSaudeSelecionado = s">
           <div class="materia-row">
-            <div class="materia-info"><strong>{{ s.nome }}</strong><small>{{ s.horario }}</small></div>
+            <div class="materia-info">
+              <strong>{{ s.nome }}</strong>
+              <small>{{ s.horario }}</small>
+            </div>
             <button @click.stop="excluirSaude(s.id)" class="mini-btn delete">🗑️</button>
           </div>
         </div>
 
         <section v-if="itemSaudeSelecionado" class="card shadow-premium fade-in">
-          <div class="calendar-nav"><h3>Histórico: {{ itemSaudeSelecionado.nome }}</h3><button @click="itemSaudeSelecionado = null" class="btn-reset">X</button></div>
-          <VDatePicker expanded transparent borderless :first-day-of-week="1" :attributes="atributosSaude(itemSaudeSelecionado.id)" @dayclick="abrirModal" color="green" />
+          <div class="calendar-nav">
+            <h3>Histórico: {{ itemSaudeSelecionado.nome }}</h3>
+            <button @click="itemSaudeSelecionado = null" class="btn-reset">X</button>
+          </div>
+          <VDatePicker 
+            expanded transparent borderless 
+            :first-day-of-week="1"
+            :attributes="atributosSaude(itemSaudeSelecionado.id)" 
+            @dayclick="abrirModal" 
+            color="green" 
+          />
         </section>
       </div>
     </main>
@@ -107,13 +127,14 @@
       <div class="modal-sheet">
         <div class="drag-handle"></div>
         <p class="modal-label">{{ dataFocada.id }}</p>
-        <h2>{{ zonaAtiva === 'academico' ? materiaSelecionada.nome : itemSaudeSelecionado.nome }}</h2>
-        <div class="modal-buttons">
+        <h2>{{ zonaAtiva === 'academico' ? (materiaSelecionada?.nome || 'Selecione uma matéria') : (itemSaudeSelecionado?.nome || 'Selecione um item') }}</h2>
+
+        <div class="modal-buttons" v-if="(zonaAtiva === 'academico' && materiaSelecionada) || (zonaAtiva === 'saude' && itemSaudeSelecionado)">
           <template v-if="zonaAtiva === 'academico'">
             <button @click="registrar('Presença')" class="m-btn btn-presenca">Presença ✅</button>
-            <div class="m-row" style="display:flex; gap:10px">
-              <button @click="registrar('Falta')" class="m-btn btn-falta" style="flex:1">Falta ❌</button>
-              <button @click="registrar('EAD')" class="m-btn btn-ead" style="flex:1">EAD 💻</button>
+            <div class="m-row">
+              <button @click="registrar('Falta')" class="m-btn btn-falta">Falta ❌</button>
+              <button @click="registrar('EAD')" class="m-btn btn-ead">EAD 💻</button>
             </div>
           </template>
           <template v-else>
@@ -132,12 +153,11 @@ import { ref, onMounted, computed } from 'vue';
 import { db } from './firebase';
 import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc } from "firebase/firestore";
 
-// --- ESTADOS ---
 const zonaAtiva = ref('academico');
 const pastaAberta = ref(1);
 const idEditando = ref(null);
 const dataAtual = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'short' });
-const diasSemanaPt = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+const diasSemanaPt = ['Dom', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
 
 const materias = ref([]);
 const presencas = ref([]);
@@ -150,34 +170,9 @@ const dataFocada = ref(null);
 const novaMateria = ref({ nome: '', diaSemana: '', semestre: 1, limiteFaltas: 5 });
 const novoSaude = ref({ nome: '', horario: '', frequencia: 'diario' });
 
-// --- LÓGICA DE FILTRO E BLOQUEIO ---
+const mudarZona = (z) => { zonaAtiva.value = z; materiaSelecionada.value = null; itemSaudeSelecionado.value = null; };
+const togglePasta = (s) => pastaAberta.value = pastaAberta.value === s ? null : s;
 
-// Remove Sábado (7) e Domingo (1) da seleção acadêmica
-const diasDesativados = computed(() => {
-  if (zonaAtiva.value === 'academico') {
-    return [ { weekdays: [1, 7] } ]; // 1 = Domingo, 7 = Sábado
-  }
-  return [];
-});
-
-const abrirModal = (day) => {
-  // 1. Se estiver no Calendário Geral Acadêmico, não abre.
-  if (zonaAtiva.value === 'academico' && !materiaSelecionada.value) return;
-
-  // 2. Se for Acadêmico e o dia clicado for diferente do dia da aula, bloqueia.
-  if (zonaAtiva.value === 'academico' && materiaSelecionada.value) {
-    const diaClicado = day.date.getDay(); // 0 = Dom, 1 = Seg...
-    if (diaClicado !== materiaSelecionada.value.diaSemana) {
-      alert(`Bloqueado! Esta matéria é apenas na ${diasSemanaPt[materiaSelecionada.value.diaSemana]}`);
-      return;
-    }
-  }
-
-  // 3. Se for Saúde ou passou no teste acima, abre.
-  dataFocada.value = day;
-};
-
-// --- FUNÇÕES FIREBASE (MANTIDAS) ---
 const buscarDados = async () => {
   const [m, p, s, rs] = await Promise.all([
     getDocs(collection(db, "materias")),
@@ -192,7 +187,7 @@ const buscarDados = async () => {
 };
 
 const salvarMateria = async () => {
-  if(!novaMateria.value.nome || novaMateria.value.diaSemana === '') return;
+  if(!novaMateria.value.nome) return;
   if(idEditando.value) {
     await updateDoc(doc(db, "materias", idEditando.value), novaMateria.value);
     idEditando.value = null;
@@ -203,13 +198,25 @@ const salvarMateria = async () => {
   buscarDados();
 };
 
+const prepararEdicao = (m) => { idEditando.value = m.id; novaMateria.value = { ...m }; };
+const cancelarEdicao = () => { idEditando.value = null; novaMateria.value = { nome: '', diaSemana: '', semestre: 1, limiteFaltas: 5 }; };
+
+const salvarSaude = async () => {
+  if(!novoSaude.value.nome) return;
+  await addDoc(collection(db, "saude"), novoSaude.value);
+  novoSaude.value = { nome: '', horario: '', frequencia: 'diario' };
+  buscarDados();
+};
+
 const registrar = async (tipo) => {
+  if(!materiaSelecionada.value) return;
   await addDoc(collection(db, "presencas"), { materiaId: materiaSelecionada.value.id, data: dataFocada.value.id, dataOriginal: dataFocada.value.date, tipo });
   dataFocada.value = null;
   buscarDados();
 };
 
 const registrarSaude = async (tipo) => {
+  if(!itemSaudeSelecionado.value) return;
   await addDoc(collection(db, "registrosSaude"), { itemId: itemSaudeSelecionado.value.id, data: dataFocada.value.id, dataOriginal: dataFocada.value.date, tipo });
   dataFocada.value = null;
   buscarDados();
@@ -217,6 +224,7 @@ const registrarSaude = async (tipo) => {
 
 const filtrarPorSemestre = (sem) => materias.value.filter(m => m.semestre === sem);
 const contarFaltas = (id) => presencas.value.filter(p => p.materiaId === id && p.tipo === 'Falta').length;
+
 const statusFalta = (m) => {
   const f = contarFaltas(m.id);
   const lim = m.limiteFaltas || 5;
@@ -225,6 +233,7 @@ const statusFalta = (m) => {
   return 'f-gray';
 };
 
+// CALENDÁRIO GERAL: Filtra registros de matérias que não existem mais
 const atributosGerais = computed(() => {
   return presencas.value
     .filter(p => materias.value.some(m => m.id === p.materiaId))
@@ -244,12 +253,27 @@ const atributosSaude = (id) => registrosSaude.value.filter(r => r.itemId === id)
   dates: r.dataOriginal.toDate ? r.dataOriginal.toDate() : new Date(r.dataOriginal)
 }));
 
-const prepararEdicao = (m) => { idEditando.value = m.id; novaMateria.value = { ...m }; };
-const cancelarEdicao = () => { idEditando.value = null; novaMateria.value = { nome: '', diaSemana: '', semestre: 1, limiteFaltas: 5 }; };
-const togglePasta = (s) => pastaAberta.value = pastaAberta.value === s ? null : s;
-const excluirMateria = async (id) => { if(confirm('Excluir?')) { await deleteDoc(doc(db, "materias", id)); buscarDados(); } };
-const excluirSaude = async (id) => { if(confirm('Excluir?')) { await deleteDoc(doc(db, "saude", id)); buscarDados(); } };
-const salvarSaude = async () => { if(!novoSaude.value.nome) return; await addDoc(collection(db, "saude"), novoSaude.value); novoSaude.value = { nome: '', horario: '', frequencia: 'diario' }; buscarDados(); };
+const abrirModal = (day) => dataFocada.value = day;
+
+const excluirMateria = async (id) => {
+  if(confirm('Excluir matéria e todo o histórico?')) {
+    await deleteDoc(doc(db, "materias", id));
+    const orfas = presencas.value.filter(p => p.materiaId === id);
+    for (const p of orfas) await deleteDoc(doc(db, "presencas", p.id));
+    if(materiaSelecionada.value?.id === id) materiaSelecionada.value = null;
+    buscarDados();
+  }
+};
+
+const excluirSaude = async (id) => {
+  if(confirm('Excluir item e histórico?')) {
+    await deleteDoc(doc(db, "saude", id));
+    const orfas = registrosSaude.value.filter(r => r.itemId === id);
+    for (const r of orfas) await deleteDoc(doc(db, "registrosSaude", r.id));
+    if(itemSaudeSelecionado.value?.id === id) itemSaudeSelecionado.value = null;
+    buscarDados();
+  }
+};
 
 onMounted(buscarDados);
 </script>
@@ -295,11 +319,5 @@ onMounted(buscarDados);
 .btn-close-modal { width: 100%; background: none; border: none; color: #94a3b8; font-weight: bold; margin-top: 10px; }
 .fade-in { animation: fadeIn 0.3s ease; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-
-/* Estilo para datas desativadas (Sáb/Dom) */
-:deep(.vc-disabled) {
-  opacity: 0.3;
-  pointer-events: none;
-}
 </style>
 
