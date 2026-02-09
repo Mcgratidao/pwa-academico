@@ -1,130 +1,120 @@
 <template>
-  <div id="app" class="app-container">
-    <div class="glass-wrapper">
-      <header :class="zonaAtiva === 'saude' ? 'header-green' : 'header-dark-amber'">
+  <div id="app" class="app-background">
+    <div class="app-container">
+      <header :class="zonaAtiva === 'saude' ? 'header-green' : 'header-sand'">
         <div class="header-content">
-          <div class="top-row">
-            <span class="day-label">{{ dataAtual }}</span>
-            <div class="status-dot"></div>
+          <div class="header-top">
+            <span class="date-badge">{{ dataAtual }}</span>
           </div>
-          <h1>{{ zonaAtiva === 'saude' ? 'Minha Saúde' : 'Meu Acadêmico' }}</h1>
-          <div class="tabs-modern">
+          <h1 class="main-title">{{ zonaAtiva === 'saude' ? 'Bem-estar' : 'Acadêmico' }}</h1>
+          
+          <div class="tab-switcher">
             <button @click="mudarZona('academico')" :class="{ active: zonaAtiva === 'academico' }">Estudos</button>
             <button @click="mudarZona('saude')" :class="{ active: zonaAtiva === 'saude' }">Saúde</button>
           </div>
         </div>
       </header>
 
-      <main class="main-content">
-        <div v-if="zonaAtiva === 'academico'" class="fade-in">
-          <section class="card glass-card">
-            <h3 class="section-title">Nova Disciplina</h3>
-            <div class="form-group">
-              <input v-model="novaMateria.nome" placeholder="Nome da Disciplina" class="input-dark" />
-              <div class="row-flex">
-                <select v-model.number="novaMateria.semestre" class="input-dark flex-1">
+      <main class="content">
+        <div v-if="zonaAtiva === 'academico'" class="slide-up">
+          <section class="premium-card">
+            <h3 class="card-label">Nova Disciplina</h3>
+            <div class="input-stack">
+              <input v-model="novaMateria.nome" placeholder="Nome da Matéria" class="minimal-input" />
+              <div class="input-row">
+                <select v-model.number="novaMateria.semestre" class="minimal-input half">
                   <option value="1">1º Semestre</option>
                   <option value="2">2º Semestre</option>
                 </select>
-                <select v-model.number="novaMateria.diaSemana" class="input-dark flex-1">
+                <select v-model.number="novaMateria.diaSemana" class="minimal-input half">
                   <option value="">Dia da Aula</option>
                   <option v-for="i in [1,2,3,4,5]" :key="i" :value="i">{{ diasSemanaPt[i] }}</option>
                 </select>
               </div>
-              <button @click="salvarMateria" class="btn-primary-amber">Adicionar Matéria</button>
+              <button @click="salvarMateria" class="btn-main-sand">Adicionar à Grade</button>
             </div>
           </section>
 
-          <div v-for="sem in [1, 2]" :key="sem" class="semester-section">
-            <div class="folder-pill" @click="togglePasta(sem)" :class="{ 'folder-active': pastaAberta === sem }">
-              <span>📂 {{ sem }}º Semestre</span>
-              <span class="count-badge">{{ filtrarPorSemestre(sem).length }}</span>
+          <div v-for="sem in [1, 2]" :key="sem">
+            <div class="semester-pill" @click="togglePasta(sem)">
+              <span><i class="folder-icon">📂</i> {{ sem }}º Semestre</span>
+              <span class="badge">{{ filtrarPorSemestre(sem).length }}</span>
             </div>
-            <div v-if="pastaAberta === sem" class="folder-list">
-              <div v-for="m in filtrarPorSemestre(sem)" :key="m.id"
-                   @click="materiaSelecionada = m"
-                   :class="['materia-item', { 'materia-selected': materiaSelecionada?.id === m.id }]">
-                <div class="materia-row">
-                  <div class="materia-info">
-                    <span class="materia-day-chip">{{ diasSemanaPt[m.diaSemana].substring(0,3) }}</span>
-                    <strong>{{ m.nome }}</strong>
+            
+            <transition name="fade">
+              <div v-if="pastaAberta === sem" class="materia-list">
+                <div v-for="m in filtrarPorSemestre(sem)" :key="m.id" 
+                     @click="materiaSelecionada = m"
+                     :class="['materia-card', { 'selected': materiaSelecionada?.id === m.id }]">
+                  <div class="materia-body">
+                    <span class="day-dot">{{ diasSemanaPt[m.diaSemana].substring(0,1) }}</span>
+                    <span class="materia-name">{{ m.nome }}</span>
                   </div>
-                  <button @click.stop="excluirMateria(m.id)" class="mini-btn-delete">🗑️</button>
+                  <button @click.stop="excluirMateria(m.id)" class="btn-delete-subtle">✕</button>
                 </div>
               </div>
-            </div>
+            </transition>
           </div>
 
-          <section class="card calendar-card glass-card">
-            <div class="calendar-nav">
-              <h3>{{ materiaSelecionada ? materiaSelecionada.nome : 'Visão Geral' }}</h3>
-              <button v-if="materiaSelecionada" @click="materiaSelecionada = null" class="btn-reset">Limpar Filtro</button>
+          <section class="premium-card calendar-section">
+            <div class="calendar-header">
+              <h3>{{ materiaSelecionada ? materiaSelecionada.nome : 'Calendário Geral' }}</h3>
+              <button v-if="materiaSelecionada" @click="materiaSelecionada = null" class="btn-text">Ver tudo</button>
             </div>
-            <VDatePicker
-              expanded borderless transparent
-              is-dark
+            <VDatePicker 
+              expanded transparent borderless
               :first-day-of-week="1"
               :attributes="atributosFinais"
               @dayclick="abrirModal"
-              :color="materiaSelecionada ? 'yellow' : 'orange'"
+              :color="materiaSelecionada ? 'yellow' : 'gray'"
             />
           </section>
         </div>
 
-        <div v-if="zonaAtiva === 'saude'" class="fade-in">
-          <section class="card glass-card border-green-glow">
-            <h3 class="section-title">Novo Hábito</h3>
-            <div class="form-group">
-              <input v-model="novoSaude.nome" placeholder="Ex: Vitaminas" class="input-dark" />
-              <button @click="salvarSaude" class="btn-primary-green">Salvar Hábito</button>
-            </div>
+        <div v-if="zonaAtiva === 'saude'" class="slide-up">
+          <section class="premium-card green-accent">
+            <h3 class="card-label">Rastrear Hábito</h3>
+            <input v-model="novoSaude.nome" placeholder="Nome do hábito ou remédio" class="minimal-input" />
+            <button @click="salvarSaude" class="btn-main-green">Criar Hábito</button>
           </section>
 
-          <div v-for="s in listaSaude" :key="s.id"
-               class="materia-item item-saude" :class="{ 'health-selected': itemSaudeSelecionado?.id === s.id }"
+          <div v-for="s in listaSaude" :key="s.id" 
+               class="materia-card health" :class="{ 'selected-health': itemSaudeSelecionado?.id === s.id }"
                @click="itemSaudeSelecionado = s">
-            <div class="materia-row">
-              <strong>{{ s.nome }}</strong>
-              <button @click.stop="excluirSaude(s.id)" class="mini-btn-delete">🗑️</button>
-            </div>
+            <span class="materia-name">{{ s.nome }}</span>
+            <button @click.stop="excluirSaude(s.id)" class="btn-delete-subtle">✕</button>
           </div>
 
-          <section v-if="itemSaudeSelecionado" class="card glass-card fade-in">
-            <h3 class="section-title">Histórico: {{ itemSaudeSelecionado.nome }}</h3>
-            <VDatePicker
-              expanded borderless transparent
-              is-dark
-              :first-day-of-week="1"
-              :attributes="atributosSaude(itemSaudeSelecionado.id)"
-              @dayclick="abrirModal"
-              color="green"
-            />
+          <section v-if="itemSaudeSelecionado" class="premium-card slide-up">
+            <h3 class="card-label">Histórico: {{ itemSaudeSelecionado.nome }}</h3>
+            <VDatePicker expanded transparent borderless :first-day-of-week="1" :attributes="atributosSaude(itemSaudeSelecionado.id)" @dayclick="abrirModal" color="green" />
           </section>
         </div>
       </main>
     </div>
 
     <div v-if="dataFocada" class="modal-overlay" @click.self="dataFocada = null">
-      <div class="modal-sheet dark-sheet">
-        <div class="drag-handle"></div>
-        <h2 class="modal-title">{{ zonaAtiva === 'academico' ? materiaSelecionada?.nome : itemSaudeSelecionado?.nome }}</h2>
-        <p class="modal-date">{{ dataFocada.id }}</p>
-        <div class="modal-buttons">
+      <div class="modal-content">
+        <div class="modal-drag"></div>
+        <p class="modal-subtitle">Registrar para o dia</p>
+        <h2 class="modal-date">{{ dataFocada.id }}</h2>
+        
+        <div class="modal-actions">
           <template v-if="zonaAtiva === 'academico'">
-            <button @click="registrar('Presença')" class="m-btn btn-presenca">Presença ✅</button>
-            <button @click="registrar('Falta')" class="m-btn btn-falta">Falta ❌</button>
+            <button @click="registrar('Presença')" class="action-btn check">Presença</button>
+            <button @click="registrar('Falta')" class="action-btn cross">Falta</button>
           </template>
           <template v-else>
-            <button @click="registrarSaude('Tomado')" class="m-btn btn-presenca">Concluído ✅</button>
+            <button @click="registrarSaude('Tomado')" class="action-btn check">Concluído</button>
           </template>
         </div>
-        <button @click="dataFocada = null" class="btn-close-modal">Fechar</button>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
+// (A lógica de script permanece a mesma da versão anterior, pois você confirmou que estava funcionando)
 import { ref, onMounted, computed } from 'vue';
 import { db } from './firebase';
 import { collection, addDoc, getDocs, deleteDoc, doc } from "firebase/firestore";
@@ -144,7 +134,6 @@ const dataAtual = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day:
 const novaMateria = ref({ nome: '', diaSemana: '', semestre: 1 });
 const novoSaude = ref({ nome: '' });
 
-// Lógica de Cores e Calendário
 const atributosFinais = computed(() => {
   let attrs = [];
   const dots = materiaSelecionada.value ? atributosCalendario(materiaSelecionada.value.id) : atributosGerais.value;
@@ -153,7 +142,7 @@ const atributosFinais = computed(() => {
   if (zonaAtiva.value === 'academico' && materiaSelecionada.value) {
     const diaAula = materiaSelecionada.value.diaSemana;
     attrs.push({
-      content: { style: { color: '#4b5563', opacity: '0.3' } },
+      content: { style: { color: '#e2e8f0', opacity: '0.3', fontWeight: '300' } },
       dates: { weekdays: [1,2,3,4,5,6,7].filter(d => d !== diaAula + 1) }
     });
   }
@@ -178,7 +167,6 @@ const mudarZona = (z) => {
   itemSaudeSelecionado.value = null;
 };
 
-// Database Methods
 const buscarDados = async () => {
   const [m, p, s, rs] = await Promise.all([
     getDocs(collection(db, "materias")), getDocs(collection(db, "presencas")),
@@ -240,134 +228,155 @@ onMounted(buscarDados);
 </script>
 
 <style scoped>
-/* RESET & BASE */
-.app-container {
+/* BASE */
+.app-background {
   min-height: 100vh;
-  background: #0f172a; /* Azul quase preto */
-  background-image: radial-gradient(at 0% 0%, rgba(251, 191, 36, 0.05) 0, transparent 50%), 
-                    radial-gradient(at 100% 100%, rgba(16, 185, 129, 0.05) 0, transparent 50%);
+  background-color: #FAFAF5; /* Bege Areia muito claro */
   display: flex;
   justify-content: center;
-  font-family: 'Inter', system-ui, sans-serif;
+  color: #403D39;
+  font-family: 'Inter', -apple-system, sans-serif;
 }
 
-.glass-wrapper {
+.app-container {
   width: 100%;
-  max-width: 500px;
-  background: rgba(15, 23, 42, 0.8);
+  max-width: 480px;
+  background: #FFFFFF;
   min-height: 100vh;
-  box-shadow: 0 0 50px rgba(0,0,0,0.5);
+  box-shadow: 0 0 40px rgba(0,0,0,0.02);
 }
 
-/* HEADER DARK AMBER */
-.header-dark-amber {
-  background: #1e293b;
-  border-bottom: 2px solid #fbbf24;
-  padding: 30px 25px;
-  border-radius: 0 0 35px 35px;
-  color: #f1f5f9;
+/* HEADER */
+.header-sand {
+  background: #F4F1DE; /* Areia suave */
+  padding: 40px 25px 30px;
+  border-radius: 0 0 40px 40px;
+  border-bottom: 2px solid #E9E5D6;
 }
 
 .header-green {
-  background: #064e3b;
-  border-bottom: 2px solid #10b981;
-  padding: 30px 25px;
-  border-radius: 0 0 35px 35px;
-  color: #ecfdf5;
+  background: #E9F5F0; /* Verde menta pálido */
+  padding: 40px 25px 30px;
+  border-radius: 0 0 40px 40px;
+  border-bottom: 2px solid #D1E7DD;
 }
 
-.top-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-.status-dot { width: 8px; height: 8px; background: #fbbf24; border-radius: 50%; box-shadow: 0 0 10px #fbbf24; }
+.date-badge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #8D8D8D;
+}
 
-.tabs-modern {
+.main-title {
+  font-size: 1.8rem;
+  font-weight: 800;
+  margin: 10px 0 20px;
+  letter-spacing: -1px;
+}
+
+/* TABS */
+.tab-switcher {
   display: flex;
-  background: rgba(0,0,0,0.2);
-  padding: 4px;
-  border-radius: 16px;
-  margin-top: 20px;
+  background: rgba(0,0,0,0.04);
+  padding: 5px;
+  border-radius: 15px;
 }
 
-.tabs-modern button {
+.tab-switcher button {
   flex: 1; border: none; padding: 12px; border-radius: 12px;
-  font-weight: 700; color: #94a3b8; background: transparent; transition: 0.3s;
+  font-weight: 700; background: transparent; color: #8D8D8D; transition: 0.3s;
 }
 
-.tabs-modern button.active {
-  background: #fbbf24; color: #1e293b;
+.tab-switcher button.active {
+  background: #FFFFFF; color: #403D39; box-shadow: 0 4px 10px rgba(0,0,0,0.05);
 }
 
-/* CARDS & INPUTS */
-.main-content { padding: 20px; padding-bottom: 100px; }
+/* CARDS */
+.content { padding: 25px; }
 
-.card {
-  background: #1e293b;
-  border-radius: 24px;
-  padding: 22px;
+.premium-card {
+  background: #FFFFFF;
+  border: 1px solid #F0F0F0;
+  border-radius: 25px;
+  padding: 20px;
   margin-bottom: 20px;
-  border: 1px solid rgba(255,255,255,0.05);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.02);
 }
 
-.input-dark {
-  width: 100%; height: 52px; background: #0f172a; border: 1px solid #334155;
-  border-radius: 14px; padding: 0 16px; margin-bottom: 12px; color: white;
-  box-sizing: border-box; font-size: 1rem;
+.card-label { font-size: 0.85rem; font-weight: 700; color: #8D8D8D; margin-bottom: 15px; }
+
+.minimal-input {
+  width: 100%; height: 50px; background: #F8F9FA; border: 1px solid #EDEDED;
+  border-radius: 15px; padding: 0 15px; margin-bottom: 10px; font-size: 1rem;
+  box-sizing: border-box; transition: 0.3s;
 }
 
-.btn-primary-amber {
-  width: 100%; height: 52px; background: #fbbf24; color: #1e293b;
-  border: none; border-radius: 14px; font-weight: 800; cursor: pointer;
+.minimal-input:focus { border-color: #D4A373; outline: none; background: #FFF; }
+
+.input-row { display: flex; gap: 10px; }
+.half { width: 50%; }
+
+.btn-main-sand {
+  width: 100%; height: 50px; background: #D4A373; color: white;
+  border: none; border-radius: 15px; font-weight: 700; cursor: pointer;
 }
 
-.btn-primary-green {
-  width: 100%; height: 52px; background: #10b981; color: white;
-  border: none; border-radius: 14px; font-weight: 800; cursor: pointer;
+.btn-main-green {
+  width: 100%; height: 50px; background: #10b981; color: white;
+  border: none; border-radius: 15px; font-weight: 700; cursor: pointer;
 }
 
-/* LIST ITEMS */
-.materia-item {
-  background: #1e293b; border-radius: 18px; padding: 16px;
-  margin-top: 12px; border: 1px solid rgba(255,255,255,0.05); transition: 0.2s;
+/* LISTS */
+.semester-pill {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 15px 20px; background: #FDFCFB; border-radius: 18px;
+  margin-top: 10px; border: 1px solid #F0F0F0; cursor: pointer; font-weight: 700;
 }
 
-.materia-selected { border: 2px solid #fbbf24; background: #2d3748; }
+.badge { background: #403D39; color: white; padding: 2px 10px; border-radius: 8px; font-size: 0.8rem; }
 
-.materia-day-chip {
-  background: #334155; color: #fbbf24; font-size: 0.75rem;
-  padding: 4px 10px; border-radius: 8px; margin-right: 12px; font-weight: 900;
+.materia-card {
+  background: white; padding: 15px; border-radius: 18px; margin-top: 8px;
+  border: 1px solid #F0F0F0; display: flex; justify-content: space-between; align-items: center;
 }
 
-.folder-pill {
-  background: #1e293b; padding: 18px; border-radius: 20px;
-  display: flex; justify-content: space-between; margin-top: 15px;
-  border: 1px solid rgba(255,255,255,0.1); color: #e2e8f0; font-weight: 600;
+.materia-card.selected { border: 2px solid #D4A373; background: #FFFBF5; }
+
+.day-dot {
+  width: 24px; height: 24px; background: #F4F1DE; border-radius: 6px;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 0.7rem; font-weight: 900; margin-right: 12px;
 }
 
-.count-badge { background: #fbbf24; color: #1e293b; padding: 2px 12px; border-radius: 10px; }
+/* CALENDAR */
+:deep(.vc-yellow) { --vc-accent-500: #D4A373; }
 
-/* MODAL / BOTTOM SHEET */
+/* MODAL */
 .modal-overlay {
-  position: fixed; inset: 0; background: rgba(0,0,0,0.8);
-  display: flex; align-items: flex-end; z-index: 1000; backdrop-filter: blur(8px);
+  position: fixed; inset: 0; background: rgba(64, 61, 57, 0.4);
+  display: flex; align-items: flex-end; z-index: 1000; backdrop-filter: blur(4px);
 }
 
-.dark-sheet {
-  background: #1e293b; width: 100%; border-radius: 35px 35px 0 0;
-  padding: 30px; border-top: 1px solid rgba(255,255,255,0.1);
+.modal-content {
+  background: white; width: 100%; border-radius: 35px 35px 0 0;
+  padding: 30px; box-sizing: border-box; text-align: center;
 }
 
-.m-btn { width: 100%; height: 60px; border-radius: 20px; border: none; font-weight: 800; color: white; margin-bottom: 12px; font-size: 1.1rem; }
-.btn-presenca { background: #10b981; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3); }
-.btn-falta { background: #ef4444; box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3); }
+.modal-drag { width: 40px; height: 5px; background: #E0E0E0; border-radius: 10px; margin: 0 auto 20px; }
 
-/* CALENDAR CUSTOMIZATION */
-:deep(.vc-container.vc-is-dark) {
-  --vc-bg: transparent;
-  --vc-border: transparent;
+.action-btn {
+  width: 100%; height: 60px; border-radius: 20px; border: none;
+  font-weight: 700; font-size: 1rem; margin-bottom: 10px; cursor: pointer;
 }
 
-.mini-btn-delete { background: rgba(239, 68, 68, 0.1); color: #ef4444; border: none; padding: 10px; border-radius: 12px; }
+.action-btn.check { background: #10b981; color: white; }
+.action-btn.cross { background: #FF4D4D; color: white; }
 
-.fade-in { animation: fadeIn 0.4s ease-out; }
-@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+.btn-delete-subtle { background: transparent; border: none; color: #CCC; font-size: 1.2rem; cursor: pointer; }
+
+.slide-up { animation: slideUp 0.4s ease-out; }
+@keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 </style>
 
