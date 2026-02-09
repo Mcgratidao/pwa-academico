@@ -1,5 +1,43 @@
-# Vue 3 + Vite
+# 🎓 Meu Acadêmico & Saúde PWA
 
-This template should help get you started developing with Vue 3 in Vite. The template uses Vue 3 `<script setup>` SFCs, check out the [script setup docs](https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup) to learn more.
+Uma aplicação web progressiva (PWA) desenvolvida para gerenciar frequências acadêmicas e hábitos de saúde de forma simples e intuitiva.
 
-Learn more about IDE Support for Vue in the [Vue Docs Scaling up Guide](https://vuejs.org/guide/scaling-up/tooling.html#ide-support).
+---
+
+## 🚀 Acesse o App
+O projeto está publicado e pronto para uso através do link abaixo:
+
+👉 **[https://pwa-academico.vercel.app/](https://pwa-academico.vercel.app/)**
+
+---
+
+## ✨ Funcionalidades principais
+
+### 📚 Acadêmico
+* **Gestão de Faltas:** Controle rigoroso de presença com limite de faltas.
+* **Pastas por Semestre:** Organização de disciplinas por períodos.
+* **Calendário Inteligente:** * Bloqueio automático de dias que não possuem aula.
+    * Visualização exclusiva de dias úteis (Segunda a Sexta).
+    * Calendário Geral para visão consolidada de todas as matérias.
+
+### 🍏 Saúde
+* **Controle de Hábitos:** Registro de medicamentos ou atividades físicas.
+* **Histórico Visual:** Calendário específico para acompanhar a consistência dos hábitos.
+
+---
+
+## 🛠️ Tecnologias Utilizadas
+
+* **Framework:** [Vue.js 3](https://vuejs.org/) (Composition API)
+* **Build Tool:** [Vite](https://vitejs.dev/)
+* **Banco de Dados:** [Firebase Firestore](https://firebase.google.com/)
+* **Componentes de Data:** [V-Calendar](https://vcalendar.io/)
+* **Hospedagem:** [Vercel](https://vercel.com/)
+
+---
+
+## 📲 Como instalar (PWA)
+Por ser um PWA, você pode instalá-lo como um aplicativo nativo no seu celular:
+1. Acesse o link pelo Chrome (Android) ou Safari (iOS).
+2. Clique em **"Adicionar à tela de início"** ou no ícone de compartilhar > **"Adicionar à Tela de Início"**.
+
