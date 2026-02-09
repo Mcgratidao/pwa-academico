@@ -50,7 +50,7 @@
             <div v-for="m in filtrarPorSemestre(sem)" :key="m.id" 
                  @click="materiaSelecionada = m"
                  :class="['materia-item', { 'materia-selected': materiaSelecionada?.id === m.id }]">
-              
+
               <div class="materia-row">
                 <div class="materia-info">
                   <span class="materia-day-chip">{{ diasSemanaPt[m.diaSemana].substring(0,3) }}</span>
@@ -121,7 +121,7 @@
         <div class="drag-handle"></div>
         <p class="modal-label">{{ dataFocada.id }}</p>
         <h2>{{ zonaAtiva === 'academico' ? (materiaSelecionada?.nome || 'Selecione uma matéria') : (itemSaudeSelecionado?.nome || 'Selecione um item') }}</h2>
-        
+
         <div class="modal-buttons" v-if="(zonaAtiva === 'academico' && materiaSelecionada) || (zonaAtiva === 'saude' && itemSaudeSelecionado)">
           <template v-if="zonaAtiva === 'academico'">
             <button @click="registrar('Presença')" class="m-btn btn-presenca">Presença ✅</button>
@@ -146,7 +146,6 @@ import { ref, onMounted, computed } from 'vue';
 import { db } from './firebase';
 import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc } from "firebase/firestore";
 
-// Estados, Lógica e Firebase (Mantidos integralmente para não quebrar a funcionalidade)
 const zonaAtiva = ref('academico');
 const pastaAberta = ref(1);
 const idEditando = ref(null);
@@ -227,15 +226,20 @@ const statusFalta = (m) => {
   return 'f-gray';
 };
 
+// CALENDÁRIO GERAL: Filtra registros de matérias que não existem mais
+const atributosGerais = computed(() => {
+  return presencas.value
+    .filter(p => materias.value.some(m => m.id === p.materiaId))
+    .map(p => ({
+      highlight: { color: p.tipo === 'Presença' ? 'green' : (p.tipo === 'EAD' ? 'blue' : 'red'), fillMode: 'light' },
+      dates: p.dataOriginal.toDate ? p.dataOriginal.toDate() : new Date(p.dataOriginal)
+    }));
+});
+
 const atributosCalendario = (id) => presencas.value.filter(p => p.materiaId === id).map(p => ({
   highlight: { color: p.tipo === 'Presença' ? 'green' : (p.tipo === 'EAD' ? 'blue' : 'red'), fillMode: 'solid' },
   dates: p.dataOriginal.toDate ? p.dataOriginal.toDate() : new Date(p.dataOriginal)
 }));
-
-const atributosGerais = computed(() => presencas.value.map(p => ({
-  highlight: { color: p.tipo === 'Presença' ? 'green' : (p.tipo === 'EAD' ? 'blue' : 'red'), fillMode: 'light' },
-  dates: p.dataOriginal.toDate ? p.dataOriginal.toDate() : new Date(p.dataOriginal)
-})));
 
 const atributosSaude = (id) => registrosSaude.value.filter(r => r.itemId === id).map(r => ({
   highlight: { color: r.tipo === 'Tomado' ? 'green' : 'red', fillMode: 'solid' },
@@ -243,74 +247,72 @@ const atributosSaude = (id) => registrosSaude.value.filter(r => r.itemId === id)
 }));
 
 const abrirModal = (day) => dataFocada.value = day;
-const excluirMateria = async (id) => { if(confirm('Excluir?')) { await deleteDoc(doc(db, "materias", id)); buscarDados(); } };
-const excluirSaude = async (id) => { if(confirm('Excluir?')) { await deleteDoc(doc(db, "saude", id)); buscarDados(); } };
+
+const excluirMateria = async (id) => {
+  if(confirm('Excluir matéria e todo o histórico?')) {
+    await deleteDoc(doc(db, "materias", id));
+    // Limpeza de órfãos
+    const orfas = presencas.value.filter(p => p.materiaId === id);
+    for (const p of orfas) await deleteDoc(doc(db, "presencas", p.id));
+    materiaSelecionada.value = null;
+    buscarDados();
+  }
+};
+
+const excluirSaude = async (id) => {
+  if(confirm('Excluir item e histórico?')) {
+    await deleteDoc(doc(db, "saude", id));
+    const orfas = registrosSaude.value.filter(r => r.itemId === id);
+    for (const r of orfas) await deleteDoc(doc(db, "registrosSaude", r.id));
+    itemSaudeSelecionado.value = null;
+    buscarDados();
+  }
+};
 
 onMounted(buscarDados);
 </script>
 
 <style scoped>
+/* Estilos mantidos conforme sua última versão que estava boa */
 .mobile-container { max-width: 480px; margin: 0 auto; min-height: 100vh; background: #f8fafc; color: #334155; font-family: sans-serif; }
 .main-content { padding: 15px; padding-bottom: 100px; }
-
-/* HEADER */
 .header-yellow { background: #fbbf24; padding: 30px 20px; border-radius: 0 0 30px 30px; color: #451a03; }
 .header-green { background: #10b981; padding: 30px 20px; border-radius: 0 0 30px 30px; color: white; }
 .tabs-modern { display: flex; background: rgba(0,0,0,0.1); padding: 4px; border-radius: 15px; margin-top: 15px; }
-.tabs-modern button { flex: 1; border: none; padding: 10px; border-radius: 12px; font-weight: bold; background: transparent; }
-.tabs-modern button.active { background: white; }
-
-/* FORMULÁRIO */
+.tabs-modern button { flex: 1; border: none; padding: 10px; border-radius: 12px; font-weight: bold; background: transparent; color: inherit;}
+.tabs-modern button.active { background: white; color: #334155; }
 .card { background: white; border-radius: 20px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
 .input-modern { width: 100%; height: 48px; background: #f1f5f9; border: none; border-radius: 12px; padding: 0 15px; margin-bottom: 10px; box-sizing: border-box; }
 .row-flex { display: flex; gap: 10px; }
 .flex-1 { flex: 1; }
 .btn-primary-yellow { width: 100%; height: 50px; background: #fbbf24; border: none; border-radius: 12px; font-weight: bold; color: #451a03; }
+.btn-primary-green { width: 100%; height: 50px; background: #10b981; border: none; border-radius: 12px; font-weight: bold; color: white; }
 .btn-update { width: 100%; height: 50px; background: #334155; border: none; border-radius: 12px; font-weight: bold; color: white; }
-
-/* LISTA DE MATÉRIAS (CORREÇÃO DE ESTILO) */
-.materia-item { 
-  background: white; border-radius: 15px; padding: 12px 16px; 
-  margin-top: 8px; border: 1px solid #f1f5f9; transition: 0.2s;
-}
+.materia-item { background: white; border-radius: 15px; padding: 12px 16px; margin-top: 8px; border: 1px solid #f1f5f9; }
 .materia-selected { border: 2px solid #fbbf24; background: #fffdf5; }
-
-.materia-row { 
-  display: flex; justify-content: space-between; align-items: center; 
-}
-
-.materia-info { display: flex; align-items: center; gap: 10px; flex: 1; }
+.health-selected { border: 2px solid #10b981; background: #f0fdf4; }
+.materia-row { display: flex; justify-content: space-between; align-items: center; }
+.materia-info { display: flex; align-items: center; gap: 10px; flex: 1; overflow: hidden; }
 .materia-day-chip { background: #f1f5f9; font-size: 0.7rem; font-weight: 800; padding: 4px 8px; border-radius: 6px; color: #64748b; }
-.materia-info strong { font-size: 0.95rem; color: #1e293b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px; }
-
-/* CONTROLES ALINHADOS LADO A LADO */
+.materia-info strong { font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .materia-controls { display: flex; align-items: center; gap: 8px; }
-
-.compact-falta { 
-  font-size: 0.8rem; font-weight: 800; padding: 6px 10px; border-radius: 10px; min-width: 35px; text-align: center;
-}
+.compact-falta { font-size: 0.8rem; font-weight: 800; padding: 6px 10px; border-radius: 10px; min-width: 35px; text-align: center; }
 .f-gray { background: #f1f5f9; color: #64748b; }
 .f-orange { background: #fef3c7; color: #d97706; }
 .f-red { background: #fee2e2; color: #dc2626; }
-
-.mini-btn { 
-  width: 32px; height: 32px; border-radius: 8px; border: none; 
-  display: flex; align-items: center; justify-content: center; font-size: 0.9rem; cursor: pointer;
-}
+.mini-btn { width: 32px; height: 32px; border-radius: 8px; border: none; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; cursor: pointer; }
 .edit { background: #eff6ff; color: #3b82f6; }
 .delete { background: #fff1f2; color: #ef4444; }
-
-/* FOLDERS */
 .folder-pill { background: #fff; padding: 15px; border-radius: 15px; display: flex; justify-content: space-between; margin-top: 10px; cursor: pointer; border: 1px solid #e2e8f0; }
-.folder-active { background: #f8fafc; }
 .count-badge { background: #334155; color: white; padding: 2px 8px; border-radius: 8px; font-size: 0.7rem; }
-
-/* MODAL */
 .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: flex-end; z-index: 100; }
 .modal-sheet { background: white; width: 100%; border-radius: 25px 25px 0 0; padding: 25px; box-sizing: border-box; }
-.m-btn { width: 100%; height: 55px; border-radius: 15px; border: none; font-weight: bold; color: white; margin-bottom: 10px; }
+.m-btn { width: 100%; height: 55px; border-radius: 15px; border: none; font-weight: bold; color: white; margin-bottom: 10px; cursor: pointer; }
 .btn-presenca { background: #10b981; }
 .btn-falta { background: #ef4444; }
 .btn-ead { background: #3b82f6; }
+.btn-close-modal { width: 100%; background: none; border: none; color: #94a3b8; font-weight: bold; margin-top: 10px; }
+.fade-in { animation: fadeIn 0.3s ease; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 </style>
 
